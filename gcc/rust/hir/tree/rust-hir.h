@@ -617,6 +617,9 @@ public:
     CONST,
   };
 
+  virtual AST::Attribute &get_outer_attribute () = 0;
+  virtual bool has_outer_attribute () const = 0;
+
   // Unique pointer custom clone function
   std::unique_ptr<GenericParam> clone_generic_param () const
   {
@@ -669,7 +672,9 @@ public:
   std::vector<Lifetime> &get_lifetime_bounds () { return lifetime_bounds; }
 
   // Returns whether the lifetime param has an outer attribute.
-  bool has_outer_attribute () const { return !outer_attr.is_empty (); }
+  bool has_outer_attribute () const override { return !outer_attr.is_empty (); }
+
+  AST::Attribute &get_outer_attribute () override { return outer_attr; }
 
   // Returns whether the lifetime param is in an error state.
   bool is_error () const { return lifetime.is_error (); }
@@ -747,6 +752,11 @@ public:
     if (other.default_expression)
       default_expression = other.default_expression->clone_expr ();
   }
+
+  // Returns whether the lifetime param has an outer attribute.
+  bool has_outer_attribute () const override { return false; }
+
+  AST::Attribute &get_outer_attribute () override { rust_assert (false); }
 
   std::string as_string () const override final;
 

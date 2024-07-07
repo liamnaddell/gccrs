@@ -648,7 +648,7 @@ UnsafeChecker::visit (InlineAsm &expr)
 }
 
 void
-UnsafeChecker::visit (TypeParam &)
+UnsafeChecker::visit (TypeParam &parm)
 {}
 
 void
@@ -784,7 +784,22 @@ UnsafeChecker::visit (Trait &trait)
 void
 UnsafeChecker::visit (ImplBlock &impl)
 {
-  // FIXME: Handle unsafe impls
+  bool safe = !impl.is_unsafe ();
+  // Check for unsafe-only attributes on generics
+  if (safe)
+    {
+      for (auto &parm : impl.get_generic_params ())
+	{
+	  if (!parm->has_outer_attribute ())
+	    continue;
+
+	  AST::Attribute &attr = parm->get_outer_attribute ();
+	  rust_error_at (
+	    attr.get_locus (), ErrorCode::E0133,
+	    "use of %<may_dangle%> unsafe and requires unsafe impl");
+	}
+    }
+
   for (auto &item : impl.get_impl_items ())
     item->accept_vis (*this);
 }

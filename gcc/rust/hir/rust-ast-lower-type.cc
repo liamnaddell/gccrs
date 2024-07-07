@@ -498,6 +498,17 @@ ASTLowerGenericParam::visit (AST::TypeParam &param)
 		      ? ASTLoweringType::translate (param.get_type ())
 		      : nullptr;
 
+  for (auto o_attr : param.get_outer_attrs ())
+    {
+      rust_assert (!o_attr.is_inner_attribute ());
+      // TODO: How to compare attr's properly
+      Rust::AST::SimplePath path = o_attr.get_path ();
+      const std::string &md = "may_dangle";
+      if (path == md)
+	{
+	  outer_attr = o_attr;
+	}
+    }
   auto crate_num = mappings.get_current_crate ();
   Analysis::NodeMapping mapping (crate_num, param.get_node_id (),
 				 mappings.get_next_hir_id (crate_num),

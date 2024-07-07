@@ -101,11 +101,12 @@ Mappings::Mappings ()
     hirIdIter (kDefaultHirIdBegin), nodeIdIter (kDefaultNodeIdBegin)
 {
   Analysis::NodeMapping node (0, 0, 0, 0);
+  // TODO: What do I do here?
   builtinMarker
     = new HIR::ImplBlock (node, {}, {}, nullptr, nullptr, HIR::WhereClause ({}),
 			  BoundPolarity::RegularBound,
 			  HIR::Visibility (HIR::Visibility::VisType::PUBLIC),
-			  {}, {}, UNDEF_LOCATION);
+			  {}, {}, UNDEF_LOCATION, false);
 }
 
 Mappings::~Mappings () { delete builtinMarker; }

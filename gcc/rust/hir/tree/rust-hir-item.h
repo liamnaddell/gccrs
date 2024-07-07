@@ -59,8 +59,8 @@ public:
   bool has_type_param_bounds () const { return !type_param_bounds.empty (); }
 
   // Returns whether the type param has an outer attribute.
-  bool has_outer_attribute () const { return !outer_attr.is_empty (); }
-  AST::Attribute &get_outer_attribute () { return outer_attr; }
+  bool has_outer_attribute () const override { return !outer_attr.is_empty (); }
+  AST::Attribute &get_outer_attribute () override { return outer_attr; }
 
   TypeParam (Analysis::NodeMapping mappings, Identifier type_representation,
 	     location_t locus = UNDEF_LOCATION,
@@ -2741,6 +2741,7 @@ class ImplBlock : public VisItem, public WithInnerAttrs
   BoundPolarity polarity;
   location_t locus;
   std::vector<std::unique_ptr<ImplItem>> impl_items;
+  bool unsafe;
 
 public:
   ImplBlock (Analysis::NodeMapping mappings,
@@ -2749,13 +2750,13 @@ public:
 	     std::unique_ptr<Type> impl_type,
 	     std::unique_ptr<TypePath> trait_ref, WhereClause where_clause,
 	     BoundPolarity polarity, Visibility vis, AST::AttrVec inner_attrs,
-	     AST::AttrVec outer_attrs, location_t locus)
+	     AST::AttrVec outer_attrs, location_t locus, bool unsafe)
     : VisItem (std::move (mappings), std::move (vis), std::move (outer_attrs)),
       WithInnerAttrs (std::move (inner_attrs)),
       generic_params (std::move (generic_params)),
       impl_type (std::move (impl_type)), trait_ref (std::move (trait_ref)),
       where_clause (std::move (where_clause)), polarity (polarity),
-      locus (locus), impl_items (std::move (impl_items))
+      locus (locus), impl_items (std::move (impl_items)), unsafe (unsafe)
   {}
 
   ImplBlock (ImplBlock const &other)
@@ -2800,6 +2801,8 @@ public:
 
   // Returns whether inherent impl block has inherent impl items.
   bool has_impl_items () const { return !impl_items.empty (); }
+
+  bool is_unsafe () const { return unsafe; }
 
   void accept_vis (HIRFullVisitor &vis) override;
   void accept_vis (HIRStmtVisitor &vis) override;
