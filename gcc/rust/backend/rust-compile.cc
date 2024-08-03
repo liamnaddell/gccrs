@@ -213,9 +213,13 @@ HIRCompileBase::coerce_to_dyn_object (tree compiled_ref,
   unsigned long i = 0;
   for (auto &bound : ty->get_object_items ())
     {
+      //TODO: We iterate through get_object_items, but have as an entry that
+      //item parent <===> predicate child. Is this correct?????
       const Resolver::TraitItemReference *item = bound.first;
       const TyTy::TypeBoundPredicate *predicate = bound.second;
 
+      rust_debug("あの item \"%s\"",item->as_string().c_str());
+      rust_debug("あの predicate \"%s\"",predicate->as_string().c_str());
       auto address = compute_address_for_trait_item (item, predicate,
 						     probed_bounds_for_receiver,
 						     actual, actual, locus);
@@ -256,6 +260,8 @@ HIRCompileBase::compute_address_for_trait_item (
   //
   // FIXME this does not support super traits
 
+  //TODO: This function can't find functions in the superclass. We need to
+  //iterate (And recurse?) through supertraits
   TyTy::TypeBoundPredicateItem predicate_item
     = predicate->lookup_associated_item (ref->get_identifier ());
   rust_assert (!predicate_item.is_error ());
@@ -267,18 +273,22 @@ HIRCompileBase::compute_address_for_trait_item (
     = static_cast<TyTy::FnType *> (trait_item_type);
 
   // find impl-block for this trait-item-ref
-  HIR::ImplBlock *associated_impl_block = nullptr;
   const Resolver::TraitReference *predicate_trait_ref = predicate->get ();
+
+  //TODO: predicate_trait_ref has a list of super traits, so we could
+  //potentially push all of those
+  //TODO: Parameterize associated_impl_block into a vector, and interate over
+  //it :)
   for (auto &item : receiver_bounds)
     {
       Resolver::TraitReference *trait_ref = item.first;
       HIR::ImplBlock *impl_block = item.second;
-      if (predicate_trait_ref->is_equal (*trait_ref))
-	{
-	  associated_impl_block = impl_block;
-	  break;
-	}
-    }
+      rust_debug("receiver_bounds(a,b):  (%s    ,    b)", trait_ref->as_string().c_str());
+      HIR::ImplBlock *associated_impl_block = impl_block;
+
+  rust_debug("あの Looking for fn/trait item \"%s\"",ref->get_identifier().c_str());
+  rust_debug("あの Predicate \"%s\"",predicate->as_string().c_str());
+  rust_debug("あの associated_impl_block \"%s\"",predicate->as_string().c_str());
 
   // FIXME this probably should just return error_mark_node but this helps
   // debug for now since we are wrongly returning early on type-resolution
@@ -355,6 +365,7 @@ HIRCompileBase::compute_address_for_trait_item (
 
       return CompileInherentImplItem::Compile (associated_function, ctx,
 					       lookup_fntype, true, locus);
+    }
     }
 
   // we can only compile trait-items with a body

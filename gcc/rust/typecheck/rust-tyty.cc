@@ -3792,8 +3792,9 @@ DynamicObjectType::get_object_items () const
   std::vector<
     std::pair<const Resolver::TraitItemReference *, const TypeBoundPredicate *>>
     items;
-  for (auto &bound : get_specified_bounds ())
+  for (const TypeBoundPredicate &bound : get_specified_bounds ())
     {
+      rust_debug_loc(bound.get_locus(),"We are here");
       const Resolver::TraitReference *trait = bound.get ();
       std::vector<const Resolver::TraitItemReference *> trait_items;
       trait->get_trait_items_and_supers (trait_items);
