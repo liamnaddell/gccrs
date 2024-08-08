@@ -241,120 +241,108 @@ HIRCompileBase::compute_address_for_trait_item (
     &receiver_bounds,
   const TyTy::BaseType *receiver, const TyTy::BaseType *root, location_t locus)
 {
-  // There are two cases here one where its an item which has an implementation
-  // within a trait-impl-block. Then there is the case where there is a default
-  // implementation for this within the trait.
-  //
-  // The awkward part here is that this might be a generic trait and we need to
-  // figure out the correct monomorphized type for this so we can resolve the
-  // address of the function , this is stored as part of the
-  // type-bound-predicate
-  //
-  // Algo:
-  // check if there is an impl-item for this trait-item-ref first
-  // else assert that the trait-item-ref has an implementation
-  //
-  // FIXME this does not support super traits
-
   TyTy::TypeBoundPredicateItem predicate_item
     = predicate->lookup_associated_item (ref->get_identifier ());
   rust_assert (!predicate_item.is_error ());
 
-  // this is the expected end type
+  // This is the expected end type
   TyTy::BaseType *trait_item_type = predicate_item.get_tyty_for_receiver (root);
   rust_assert (trait_item_type->get_kind () == TyTy::TypeKind::FNDEF);
   TyTy::FnType *trait_item_fntype
     = static_cast<TyTy::FnType *> (trait_item_type);
 
-  // find impl-block for this trait-item-ref
-  HIR::ImplBlock *associated_impl_block = nullptr;
-  const Resolver::TraitReference *predicate_trait_ref = predicate->get ();
   for (auto &item : receiver_bounds)
     {
-      Resolver::TraitReference *trait_ref = item.first;
       HIR::ImplBlock *impl_block = item.second;
-      if (predicate_trait_ref->is_equal (*trait_ref))
-	{
-	  associated_impl_block = impl_block;
-	  break;
-	}
-    }
+      rust_assert (impl_block != nullptr);
 
-  // FIXME this probably should just return error_mark_node but this helps
-  // debug for now since we are wrongly returning early on type-resolution
-  // failures, until we take advantage of more error types and error_mark_node
-  rust_assert (associated_impl_block != nullptr);
+      // Lookup type for potentially associated impl.
+      std::unique_ptr<HIR::Type> &self_type_path = impl_block->get_type ();
 
-  // lookup self for the associated impl
-  std::unique_ptr<HIR::Type> &self_type_path
-    = associated_impl_block->get_type ();
-  TyTy::BaseType *self = nullptr;
-  bool ok = ctx->get_tyctx ()->lookup_type (
-    self_type_path->get_mappings ().get_hirid (), &self);
-  rust_assert (ok);
-
-  // lookup the predicate item from the self
-  TyTy::TypeBoundPredicate *self_bound = nullptr;
-  for (auto &bound : self->get_specified_bounds ())
-    {
-      const Resolver::TraitReference *bound_ref = bound.get ();
-      const Resolver::TraitReference *specified_ref = predicate->get ();
-      if (bound_ref->is_equal (*specified_ref))
-	{
-	  self_bound = &bound;
-	  break;
-	}
-    }
-  rust_assert (self_bound != nullptr);
-
-  // lookup the associated item from the associated impl block
-  TyTy::TypeBoundPredicateItem associated_self_item
-    = self_bound->lookup_associated_item (ref->get_identifier ());
-  rust_assert (!associated_self_item.is_error ());
-
-  // Lookup the impl-block for the associated impl_item if it exists
-  HIR::Function *associated_function = nullptr;
-  for (auto &impl_item : associated_impl_block->get_impl_items ())
-    {
-      bool is_function = impl_item->get_impl_item_type ()
-			 == HIR::ImplItem::ImplItemType::FUNCTION;
-      if (!is_function)
+      // Checks for empty impl blocks, triggered by Sized trait.
+      if (self_type_path == nullptr)
 	continue;
 
-      HIR::Function *fn = static_cast<HIR::Function *> (impl_item.get ());
-      bool found_associated_item
-	= fn->get_function_name ().as_string ().compare (ref->get_identifier ())
-	  == 0;
-      if (found_associated_item)
-	associated_function = fn;
-    }
-
-  // we found an impl_item for this
-  if (associated_function != nullptr)
-    {
-      // lookup the associated type for this item
-      TyTy::BaseType *lookup = nullptr;
+      // Convert HIR::Type to TyTy::BaseType
+      TyTy::BaseType *self = nullptr;
       bool ok = ctx->get_tyctx ()->lookup_type (
-	associated_function->get_mappings ().get_hirid (), &lookup);
-      rust_assert (ok);
-      rust_assert (lookup->get_kind () == TyTy::TypeKind::FNDEF);
-      TyTy::FnType *lookup_fntype = static_cast<TyTy::FnType *> (lookup);
+	self_type_path->get_mappings ().get_hirid (), &self);
 
-      if (lookup_fntype->needs_substitution ())
+      rust_assert (ok);
+
+      // Look through the relevant bounds on our type, and find which one our
+      // impl block satisfies
+      TyTy::TypeBoundPredicate *self_bound = nullptr;
+      for (auto &bound : self->get_specified_bounds ())
 	{
-	  TyTy::BaseType *infer
-	    = Resolver::SubstMapper::InferSubst (lookup_fntype, UNDEF_LOCATION);
-	  infer
-	    = Resolver::unify_site (infer->get_ref (),
-				    TyTy::TyWithLocation (trait_item_fntype),
-				    TyTy::TyWithLocation (infer),
-				    UNDEF_LOCATION);
-	  rust_assert (infer->get_kind () == TyTy::TypeKind::FNDEF);
-	  lookup_fntype = static_cast<TyTy::FnType *> (infer);
+	  const Resolver::TraitReference *bound_ref = bound.get ();
+	  const Resolver::TraitReference *specified_ref = predicate->get ();
+	  // If this impl is for one of our types or supertypes
+	  if (specified_ref->satisfies_bound (*bound_ref))
+	    {
+	      self_bound = &bound;
+	      break;
+	    }
 	}
 
-      return CompileInherentImplItem::Compile (associated_function, ctx,
-					       lookup_fntype, true, locus);
+      // This impl block doesn't help us
+      if (self_bound == nullptr)
+	continue;
+
+      // lookup the associated item from the associated impl block
+      TyTy::TypeBoundPredicateItem associated_self_item
+	= self_bound->lookup_associated_item (ref->get_identifier ());
+
+      // We couldn't find the fn, probably the wrong impl block
+      // TODO: Should this be inside the bound loop?
+      if (associated_self_item.is_error ())
+	continue;
+
+      // Lookup the impl-block for the associated impl_item if it exists
+      // TODO: Bound loop?
+      HIR::Function *associated_function = nullptr;
+      for (auto &impl_item : impl_block->get_impl_items ())
+	{
+	  bool is_function = impl_item->get_impl_item_type ()
+			     == HIR::ImplItem::ImplItemType::FUNCTION;
+	  if (!is_function)
+	    continue;
+
+	  HIR::Function *fn = static_cast<HIR::Function *> (impl_item.get ());
+	  bool found_associated_item
+	    = fn->get_function_name ().as_string ().compare (
+		ref->get_identifier ())
+	      == 0;
+	  if (found_associated_item)
+	    associated_function = fn;
+	}
+
+      // we found an impl_item for this
+      if (associated_function != nullptr)
+	{
+	  // lookup the associated type for this item
+	  TyTy::BaseType *lookup = nullptr;
+	  bool ok = ctx->get_tyctx ()->lookup_type (
+	    associated_function->get_mappings ().get_hirid (), &lookup);
+	  rust_assert (ok);
+	  rust_assert (lookup->get_kind () == TyTy::TypeKind::FNDEF);
+	  TyTy::FnType *lookup_fntype = static_cast<TyTy::FnType *> (lookup);
+
+	  if (lookup_fntype->needs_substitution ())
+	    {
+	      TyTy::BaseType *infer
+		= Resolver::SubstMapper::InferSubst (lookup_fntype,
+						     UNDEF_LOCATION);
+	      infer = Resolver::unify_site (
+		infer->get_ref (), TyTy::TyWithLocation (trait_item_fntype),
+		TyTy::TyWithLocation (infer), UNDEF_LOCATION);
+	      rust_assert (infer->get_kind () == TyTy::TypeKind::FNDEF);
+	      lookup_fntype = static_cast<TyTy::FnType *> (infer);
+	    }
+
+	  return CompileInherentImplItem::Compile (associated_function, ctx,
+						   lookup_fntype, true, locus);
+	}
     }
 
   // we can only compile trait-items with a body
