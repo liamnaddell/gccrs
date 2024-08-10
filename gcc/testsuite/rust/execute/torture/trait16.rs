@@ -1,0 +1,48 @@
+/* { dg-output "parent123\r*\nchild\r*\n" } */
+//Testing lifetimes with supertraits
+
+extern "C" {
+    fn printf(s: *const i8, ...);
+}
+ 
+struct Foo {
+    my_int: u32,
+}
+
+trait Parent {
+    fn parent(&self);
+}
+
+trait Child : Parent {
+    fn child(&self);
+}
+
+impl Parent for Foo {
+    fn parent(&self) {
+        unsafe {
+            let parent = "parent%i\n\0";
+            let msg = parent as *const str;
+            printf(msg as *const i8,self.my_int);
+            return;
+        }
+    }
+}
+
+impl Child for Foo {
+    fn child<'a>(&self) {
+        let _ = self;
+        unsafe {
+            let child = "child\n\0";
+            let msg = child as *const str;
+            printf(msg as *const i8);
+        }
+    }
+}
+
+pub fn main() {
+    let a = Foo{ my_int: 0xf00dfeed};
+    let b: &dyn Child = &a;
+
+    b.parent();
+    b.child();
+}
