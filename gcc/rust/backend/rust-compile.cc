@@ -93,7 +93,7 @@ HIRCompileBase::coercion_site1 (tree rvalue, TyTy::BaseType *rval,
 	= static_cast<const TyTy::ReferenceType *> (actual);
 
       // Check against casting dyn reference to dyn reference.
-      if (exp->is_dyn_object () && act->is_dyn_object () && act satisfies exp)
+      if (exp->is_dyn_obj_type () && act->is_dyn_obj_type () && exp->is_equal(*act))
 	{
 	  rust_error_at(rvalue_locus,"Attempt to cast dyn to dyn");
 	  return error_mark_node;
