@@ -82,11 +82,6 @@ HIRCompileBase::coercion_site1 (tree rvalue, TyTy::BaseType *rval,
 
   if (expected->get_kind () == TyTy::TypeKind::REF)
     {
-      // this is a dyn object
-      if (RS_DST_FLAG_P (TREE_TYPE (rvalue)))
-	{
-	  return rvalue;
-	}
 
       // bad coercion... of something to a reference
       if (actual->get_kind () != TyTy::TypeKind::REF)
@@ -96,6 +91,19 @@ HIRCompileBase::coercion_site1 (tree rvalue, TyTy::BaseType *rval,
 	= static_cast<const TyTy::ReferenceType *> (expected);
       const TyTy::ReferenceType *act
 	= static_cast<const TyTy::ReferenceType *> (actual);
+
+      // Check against casting dyn reference to dyn reference.
+      if (exp->is_dyn_object () && act->is_dyn_object () && act satisfies exp)
+	{
+	  rust_error_at(rvalue_locus,"Attempt to cast dyn to dyn");
+	  return error_mark_node;
+	}
+
+      // this is a dyn object
+      if (RS_DST_FLAG_P (TREE_TYPE (rvalue)))
+	return rvalue;
+
+
 
       tree deref_rvalue = indirect_expression (rvalue, rvalue_locus);
       tree coerced

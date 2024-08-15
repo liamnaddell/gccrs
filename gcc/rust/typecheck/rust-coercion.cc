@@ -432,6 +432,7 @@ TypeCoercionRules::coerce_unsized (TyTy::BaseType *source,
 bool
 TypeCoercionRules::select (TyTy::BaseType &autoderefed)
 {
+  //TODO: Used when coercing child to parent
   rust_debug ("TypeCoercionRules::select autoderefed={%s} can_eq expected={%s}",
 	      autoderefed.debug_str ().c_str (),
 	      expected->debug_str ().c_str ());

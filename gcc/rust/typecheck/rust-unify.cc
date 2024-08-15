@@ -1666,14 +1666,10 @@ UnifyRules::expect_dyn (TyTy::DynamicObjectType *ltype, TyTy::BaseType *rtype)
 	TyTy::DynamicObjectType &type
 	  = *static_cast<TyTy::DynamicObjectType *> (rtype);
 	if (ltype->num_specified_bounds () != type.num_specified_bounds ())
-	  {
 	    return new TyTy::ErrorType (0);
-	  }
 
 	if (!ltype->bounds_compatible (type, locus, true))
-	  {
 	    return new TyTy::ErrorType (0);
-	  }
 
 	return ltype->clone ();
       }
