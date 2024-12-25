@@ -25,20 +25,6 @@
 namespace Rust {
 
 void
-ASTValidation::visit (AST::Lifetime &lifetime)
-{
-  auto name = lifetime.get_lifetime_name ();
-  auto valid = std::set<std::string>{"static", "_"};
-  auto &keywords = Values::Keywords::keywords;
-
-  if (valid.find (name) == valid.end ()
-      && keywords.find (name) != keywords.end ())
-    rust_error_at (lifetime.get_locus (), "lifetimes cannot use keyword names");
-
-  AST::ContextualASTVisitor::visit (lifetime);
-}
-
-void
 ASTValidation::visit (AST::LoopLabel &label)
 {
   auto name = label.get_lifetime ().get_lifetime_name ();

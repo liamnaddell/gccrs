@@ -36,7 +36,6 @@ public:
 
   virtual void visit (AST::Module &module);
   virtual void visit (AST::ConstantItem &const_item);
-  virtual void visit (AST::Lifetime &lifetime);
   virtual void visit (AST::LoopLabel &label);
   virtual void visit (AST::Union &item);
   virtual void visit (AST::Function &function);
