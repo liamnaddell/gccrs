@@ -209,4 +209,7 @@ issue-266.rs
 additional-trait-bounds2.rs
 auto_traits2.rs
 auto_traits3.rs
+derive_clone_enum1.rs
+derive_clone_enum2.rs
+derive_clone_enum3.rs
 # please don't delete the trailing newline

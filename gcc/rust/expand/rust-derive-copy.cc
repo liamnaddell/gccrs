@@ -18,6 +18,7 @@
 
 #include "rust-derive-copy.h"
 #include "rust-ast-full.h"
+#include "rust-hir-map.h"
 #include "rust-mapping-common.h"
 #include "rust-path.h"
 
@@ -43,10 +44,7 @@ DeriveCopy::copy_impl (
   std::string name,
   const std::vector<std::unique_ptr<GenericParam>> &type_generics)
 {
-  // `$crate::core::marker::Copy` instead
-  auto segments = std::vector<std::unique_ptr<TypePathSegment>> ();
-  segments.emplace_back (builder.type_path_segment ("Copy"));
-  auto copy = std::make_unique<LangItemPath> (LangItem::Kind::COPY, loc);
+  auto copy = builder.type_path (LangItem::Kind::COPY);
 
   // we need to build up the generics for this impl block which will be just a
   // clone of the types specified ones

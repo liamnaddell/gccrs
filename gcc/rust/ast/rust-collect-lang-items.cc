@@ -23,6 +23,7 @@
 #include "rust-attribute-values.h"
 #include "rust-attributes.h"
 #include "rust-hir-map.h"
+#include "rust-item.h"
 
 namespace Rust {
 namespace AST {
@@ -36,7 +37,8 @@ get_lang_item_attr (const T &maybe_lang_item)
       const auto &str_path = attr.get_path ().as_string ();
       if (!Analysis::Attributes::is_known (str_path))
 	{
-	  rust_error_at (attr.get_locus (), "unknown attribute");
+	  rust_error_at (attr.get_locus (), "unknown attribute %qs",
+			 str_path.c_str ());
 	  continue;
 	}
 
@@ -84,6 +86,14 @@ CollectLangItems::visit (AST::TraitItemType &item)
 
 void
 CollectLangItems::visit (AST::Function &item)
+{
+  maybe_add_lang_item (item);
+
+  DefaultASTVisitor::visit (item);
+}
+
+void
+CollectLangItems::visit (AST::StructStruct &item)
 {
   maybe_add_lang_item (item);
 

@@ -18,9 +18,13 @@
 
 #include "rust-ast-builder.h"
 #include "rust-ast-builder-type.h"
+#include "rust-ast.h"
 #include "rust-common.h"
 #include "rust-expr.h"
 #include "rust-path.h"
+#include "rust-item.h"
+#include "rust-path.h"
+#include "rust-system.h"
 #include "rust-token.h"
 
 namespace Rust {
@@ -43,25 +47,7 @@ Builder::call (std::unique_ptr<Expr> &&path,
 }
 
 std::unique_ptr<Expr>
-Builder::call (std::unique_ptr<Path> &&path,
-	       std::vector<std::unique_ptr<Expr>> &&args) const
-{
-  return call (std::unique_ptr<Expr> (
-		 new PathInExpression (std::move (path), {}, loc)),
-	       std::move (args));
-}
-
-std::unique_ptr<Expr>
 Builder::call (std::unique_ptr<Expr> &&path, std::unique_ptr<Expr> &&arg) const
-{
-  auto args = std::vector<std::unique_ptr<Expr>> ();
-  args.emplace_back (std::move (arg));
-
-  return call (std::move (path), std::move (args));
-}
-
-std::unique_ptr<Expr>
-Builder::call (std::unique_ptr<Path> &&path, std::unique_ptr<Expr> &&arg) const
 {
   auto args = std::vector<std::unique_ptr<Expr>> ();
   args.emplace_back (std::move (arg));
@@ -117,10 +103,25 @@ Builder::type_path_segment (std::string seg) const
 }
 
 std::unique_ptr<TypePathSegment>
-Builder::generic_type_path_segment (std::string seg, GenericArgs args) const
+Builder::type_path_segment (LangItem::Kind lang_item) const
+{
+  return std::unique_ptr<TypePathSegment> (
+    new TypePathSegment (lang_item, loc));
+}
+
+std::unique_ptr<TypePathSegment>
+Builder::type_path_segment_generic (std::string seg, GenericArgs args) const
 {
   return std::unique_ptr<TypePathSegment> (
     new TypePathSegmentGeneric (PathIdentSegment (seg, loc), false, args, loc));
+}
+
+std::unique_ptr<TypePathSegment>
+Builder::type_path_segment_generic (LangItem::Kind lang_item,
+				    GenericArgs args) const
+{
+  return std::unique_ptr<TypePathSegment> (
+    new TypePathSegmentGeneric (lang_item, args, loc));
 }
 
 std::unique_ptr<Type>
@@ -133,12 +134,49 @@ Builder::single_type_path (std::string type) const
 }
 
 std::unique_ptr<Type>
+Builder::single_type_path (LangItem::Kind lang_item) const
+{
+  return std::unique_ptr<Type> (new TypePath (lang_item, {}, loc));
+}
+
+std::unique_ptr<Type>
 Builder::single_generic_type_path (std::string type, GenericArgs args) const
 {
   auto segments = std::vector<std::unique_ptr<TypePathSegment>> ();
-  segments.emplace_back (generic_type_path_segment (type, args));
+  segments.emplace_back (type_path_segment_generic (type, args));
 
   return std::unique_ptr<Type> (new TypePath (std::move (segments), loc));
+}
+
+std::unique_ptr<Type>
+Builder::single_generic_type_path (LangItem::Kind lang_item,
+				   GenericArgs args) const
+{
+  auto segments = std::vector<std::unique_ptr<TypePathSegment>> ();
+  segments.emplace_back (type_path_segment_generic (lang_item, args));
+
+  return std::unique_ptr<Type> (new TypePath (std::move (segments), loc));
+}
+
+TypePath
+Builder::type_path (std::unique_ptr<TypePathSegment> &&segment) const
+{
+  auto segments = std::vector<std::unique_ptr<TypePathSegment>> ();
+  segments.emplace_back (std::move (segment));
+
+  return TypePath (std::move (segments), loc);
+}
+
+TypePath
+Builder::type_path (std::string type) const
+{
+  return type_path (type_path_segment (type));
+}
+
+TypePath
+Builder::type_path (LangItem::Kind lang_item) const
+{
+  return type_path (type_path_segment (lang_item));
 }
 
 PathInExpression
@@ -200,6 +238,19 @@ Builder::deref (std::unique_ptr<Expr> &&of) const
   return std::unique_ptr<Expr> (new DereferenceExpr (std::move (of), {}, loc));
 }
 
+std::unique_ptr<Stmt>
+Builder::struct_struct (std::string struct_name,
+			std::vector<std::unique_ptr<GenericParam>> &&generics,
+			std::vector<StructField> &&fields)
+{
+  auto is_unit = fields.empty ();
+
+  return std::unique_ptr<Stmt> (
+    new StructStruct (std::move (fields), struct_name, std::move (generics),
+		      WhereClause::create_empty (), is_unit,
+		      Visibility::create_private (), {}, loc));
+}
+
 std::unique_ptr<Expr>
 Builder::struct_expr_struct (std::string struct_name) const
 {
@@ -212,9 +263,16 @@ Builder::struct_expr (
   std::string struct_name,
   std::vector<std::unique_ptr<StructExprField>> &&fields) const
 {
+  return struct_expr (path_in_expression ({struct_name}), std::move (fields));
+}
+
+std::unique_ptr<Expr>
+Builder::struct_expr (
+  PathInExpression struct_name,
+  std::vector<std::unique_ptr<StructExprField>> &&fields) const
+{
   return std::unique_ptr<Expr> (
-    new StructExprStructFields (path_in_expression ({struct_name}),
-				std::move (fields), loc));
+    new StructExprStructFields (struct_name, std::move (fields), loc));
 }
 
 std::unique_ptr<StructExprField>
@@ -242,7 +300,7 @@ Builder::wildcard () const
 std::unique_ptr<Path>
 Builder::lang_item_path (LangItem::Kind kind) const
 {
-  return std::unique_ptr<Path> (new LangItemPath (kind, loc));
+  return std::unique_ptr<Path> (new PathInExpression (kind, {}, loc));
 }
 
 std::unique_ptr<Expr>

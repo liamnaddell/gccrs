@@ -21,9 +21,34 @@
 
 #include "rust-ast-full.h"
 #include "rust-expr.h"
+#include "rust-ast.h"
+#include "rust-item.h"
 
 namespace Rust {
 namespace AST {
+
+template <typename T>
+std::vector<std::unique_ptr<T>>
+vec (std::unique_ptr<T> &&t)
+{
+  auto v = std::vector<std::unique_ptr<T>> ();
+
+  v.emplace_back (std::move (t));
+
+  return v;
+}
+
+template <typename T>
+std::vector<std::unique_ptr<T>>
+vec (std::unique_ptr<T> &&t1, std::unique_ptr<T> &&t2)
+{
+  auto v = std::vector<std::unique_ptr<T>> ();
+
+  v.emplace_back (std::move (t1));
+  v.emplace_back (std::move (t2));
+
+  return v;
+}
 
 // TODO: Use this builder when expanding regular macros
 /* Builder class with helper methods to create AST nodes. This builder is
@@ -72,11 +97,7 @@ public:
    */
   std::unique_ptr<Expr> call (std::unique_ptr<Expr> &&path,
 			      std::vector<std::unique_ptr<Expr>> &&args) const;
-  std::unique_ptr<Expr> call (std::unique_ptr<Path> &&path,
-			      std::vector<std::unique_ptr<Expr>> &&args) const;
   std::unique_ptr<Expr> call (std::unique_ptr<Expr> &&path,
-			      std::unique_ptr<Expr> &&arg) const;
-  std::unique_ptr<Expr> call (std::unique_ptr<Path> &&path,
 			      std::unique_ptr<Expr> &&arg) const;
 
   /**
@@ -93,16 +114,27 @@ public:
 
   /* And similarly for type path segments */
   std::unique_ptr<TypePathSegment> type_path_segment (std::string seg) const;
+  std::unique_ptr<TypePathSegment>
+  type_path_segment (LangItem::Kind lang_item) const;
 
   std::unique_ptr<TypePathSegment>
-  generic_type_path_segment (std::string seg, GenericArgs args) const;
+  type_path_segment_generic (std::string seg, GenericArgs args) const;
+  std::unique_ptr<TypePathSegment>
+  type_path_segment_generic (LangItem::Kind lang_item, GenericArgs args) const;
 
   /* Create a Type from a single string - the most basic kind of type in our AST
    */
   std::unique_ptr<Type> single_type_path (std::string type) const;
+  std::unique_ptr<Type> single_type_path (LangItem::Kind lang_item) const;
 
   std::unique_ptr<Type> single_generic_type_path (std::string type,
 						  GenericArgs args) const;
+  std::unique_ptr<Type> single_generic_type_path (LangItem::Kind lang_item,
+						  GenericArgs args) const;
+
+  TypePath type_path (std::unique_ptr<TypePathSegment> &&segment) const;
+  TypePath type_path (std::string type) const;
+  TypePath type_path (LangItem::Kind lang_item) const;
 
   /**
    * Create a path in expression from multiple segments (`Clone::clone`). You
@@ -117,14 +149,25 @@ public:
    */
   PathInExpression path_in_expression (LangItem::Kind lang_item) const;
 
+  /* Create a new struct */
+  std::unique_ptr<Stmt>
+  struct_struct (std::string struct_name,
+		 std::vector<std::unique_ptr<GenericParam>> &&generics,
+		 std::vector<StructField> &&fields);
+
   /* Create a struct expression for unit structs (`S`) */
   std::unique_ptr<Expr> struct_expr_struct (std::string struct_name) const;
 
   /**
    * Create an expression for struct instantiation with fields (`S { a, b: c }`)
+   * Tuple expressions are call expressions and can thus be constructed with
+   * `call`
    */
   std::unique_ptr<Expr>
   struct_expr (std::string struct_name,
+	       std::vector<std::unique_ptr<StructExprField>> &&fields) const;
+  std::unique_ptr<Expr>
+  struct_expr (PathInExpression struct_name,
 	       std::vector<std::unique_ptr<StructExprField>> &&fields) const;
 
   /* Create a field expression for struct instantiation (`field_name: value`) */
