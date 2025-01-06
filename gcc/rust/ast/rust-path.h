@@ -598,7 +598,7 @@ public:
   {}
 
   Path (LangItem::Kind lang_item)
-    : segments (tl::nullopt), lang_item (lang_item), kind (Kind::LangItem)
+    : segments (std::vector<PathExprSegment>({PathExprSegment(LangItem::ToString(lang_item), 0)})), lang_item (lang_item), kind (Kind::LangItem)
   {}
 
   // Returns whether path has segments.
@@ -625,12 +625,12 @@ public:
   // TODO: this seems kinda dodgy
   std::vector<PathExprSegment> &get_segments ()
   {
-    rust_assert (kind == Kind::Regular);
+    //rust_assert (kind == Kind::Regular);
     return *segments;
   }
   const std::vector<PathExprSegment> &get_segments () const
   {
-    rust_assert (kind == Kind::Regular);
+    //rust_assert (kind == Kind::Regular);
     return *segments;
   }
 
