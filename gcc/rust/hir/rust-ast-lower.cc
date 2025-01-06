@@ -495,6 +495,18 @@ void
 ASTLowerPathInExpression::visit (AST::PathInExpression &expr)
 {
   std::vector<HIR::PathExprSegment> path_segments;
+  auto crate_num = mappings.get_current_crate ();
+  Analysis::NodeMapping mapping (crate_num, expr.get_node_id (),
+				 mappings.get_next_hir_id (crate_num),
+				 UNKNOWN_LOCAL_DEFID);
+  if (expr.get_path_kind() == AST::Path::Kind::LangItem)
+    {
+      translated = new HIR::PathInExpression (mapping, std::move (path_segments),
+                expr.get_lang_item(),
+                expr.get_locus (),
+                expr.opening_scope_resolution ());
+      return;
+    }
   auto &segments = expr.get_segments ();
   for (auto &s : segments)
     {
@@ -504,12 +516,9 @@ ASTLowerPathInExpression::visit (AST::PathInExpression &expr)
       HIR::PathExprSegment *lowered_seg = &path_segments.back ();
       mappings.insert_hir_path_expr_seg (lowered_seg);
     }
-  auto crate_num = mappings.get_current_crate ();
-  Analysis::NodeMapping mapping (crate_num, expr.get_node_id (),
-				 mappings.get_next_hir_id (crate_num),
-				 UNKNOWN_LOCAL_DEFID);
 
   translated = new HIR::PathInExpression (mapping, std::move (path_segments),
+            tl::nullopt,
 					  expr.get_locus (),
 					  expr.opening_scope_resolution ());
 }

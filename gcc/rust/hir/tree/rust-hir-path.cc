@@ -142,10 +142,12 @@ PathPattern::iterate_path_segments (std::function<bool (PathExprSegment &)> cb)
 
 PathInExpression::PathInExpression (Analysis::NodeMapping mappings,
 				    std::vector<PathExprSegment> path_segments,
+            tl::optional<LangItem::Kind> lang_item,
 				    location_t locus,
 				    bool has_opening_scope_resolution,
 				    std::vector<AST::Attribute> outer_attrs)
   : PathPattern (std::move (path_segments)),
+    lang_item(lang_item),
     PathExpr (std::move (mappings), std::move (outer_attrs)),
     has_opening_scope_resolution (has_opening_scope_resolution), locus (locus)
 {}

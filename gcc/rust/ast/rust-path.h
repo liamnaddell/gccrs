@@ -599,6 +599,7 @@ public:
 
   Path (LangItem::Kind lang_item)
     : segments ({}), lang_item (lang_item), kind (Kind::LangItem)
+    //: segments (std::vector<PathExprSegment>({PathExprSegment(LangItem::ToString(lang_item), 0)})), lang_item (lang_item), kind (Kind::LangItem)
   {}
 
   // Returns whether path has segments.
@@ -622,6 +623,7 @@ public:
 
   std::string as_string () const override;
 
+#if 0
   // TODO: this seems kinda dodgy
   std::vector<PathExprSegment> &get_segments ()
   {
@@ -631,6 +633,18 @@ public:
   const std::vector<PathExprSegment> &get_segments () const
   {
     rust_assert (kind == Kind::Regular);
+    //TODO: *segments or segments
+    return segments;
+  }
+#endif
+  std::vector<PathExprSegment> &get_segments ()
+  {
+    //rust_assert (kind == Kind::Regular);
+    return segments;
+  }
+  const std::vector<PathExprSegment> &get_segments () const
+  {
+    //rust_assert (kind == Kind::Regular);
     return segments;
   }
 
