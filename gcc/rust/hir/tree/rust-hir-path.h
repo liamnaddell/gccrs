@@ -23,6 +23,7 @@
 #include "rust-hir-type-no-bounds.h"
 #include "rust-hir-pattern-abstract.h"
 #include "rust-hir-expr-abstract.h"
+#include "optional.h"
 
 namespace Rust {
 namespace HIR {
@@ -278,11 +279,13 @@ class PathInExpression : public PathPattern, public PathExpr
   location_t locus;
 
 public:
+  tl::optional<LangItem::Kind> lang_item;
   std::string as_string () const override;
 
   // Constructor
   PathInExpression (Analysis::NodeMapping mappings,
 		    std::vector<PathExprSegment> path_segments,
+        tl::optional<LangItem::Kind> lang_item = tl::nullopt,
 		    location_t locus = UNDEF_LOCATION,
 		    bool has_opening_scope_resolution = false,
 		    std::vector<AST::Attribute> outer_attrs

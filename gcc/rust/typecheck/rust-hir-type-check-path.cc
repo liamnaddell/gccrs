@@ -19,6 +19,7 @@
 #include "rust-hir-type-check-expr.h"
 #include "rust-hir-type-check-type.h"
 #include "rust-hir-type-check-item.h"
+#include "rust-hir-type-check-enumitem.h"
 #include "rust-hir-trait-resolve.h"
 #include "rust-substitution-mapper.h"
 #include "rust-hir-path-probe.h"
@@ -180,7 +181,42 @@ TypeCheckExpr::visit (HIR::PathInExpression &expr)
 {
   NodeId resolved_node_id = UNKNOWN_NODEID;
   size_t offset = -1;
+  //Likely an Option/Result variant, like Some,Ok,None, Err 
+  if (expr.lang_item != tl::nullopt)
+    {
+
+      Analysis::Mappings &mappings = Analysis::Mappings::get();
+      NodeId lang_item_node = mappings.get_lang_item_node (*expr.lang_item);
+      tl::optional<HirId> ohid = mappings.lookup_node_to_hir (lang_item_node);
+      assert (ohid != tl::nullopt);
+      HirId hid1 = *ohid;
+      std::pair<HIR::Enum *, HIR::EnumItem *> ohi = mappings.lookup_hir_enumitem (hid1);
+      //DefId lang_item_def = mappings.get_lang_item (*expr.lang_item,0 /*locus*/);
+      //LocalDefId local_def_id = lang_item_def.localDefId;
+      //LocalDefId crate_num = lang_item_def.crateNum;
+      //tl::optional<HIR::Item *> ohi = mappings.lookup_local_defid (crate_num,local_def_id);
+      //assert (ohi != tl::nullopt);
+      //found the hir for the lang item.
+      //Base Type Enum seems to cause "expected function or variant, found enum" error...
+      //but there is no Base Type for enum variant...
+      HIR::Enum &hi = *(ohi.first);
+      HIR::EnumItem &ei = *(ohi.second);
+      //HirId hid = hi.get_mappings().get_hirid();
+
+      //now find its type
+      TyTy::BaseType *bl = TypeCheckItem::Resolve (hi);
+      infered = bl;
+      assert(bl != nullptr);
+      //lmao, find a better way to do this...
+      TyTy::VariantDef *vde =
+	TypeCheckEnumItem::Resolve(ei,INT64_MAX - 1);
+
+      context->insert_variant_definition (expr.get_mappings ().get_hirid (),
+					  vde->get_id());
+      return;
+    }
   TyTy::BaseType *tyseg = resolve_root_path (expr, &offset, &resolved_node_id);
+  assert (tyseg != nullptr);
   if (tyseg->get_kind () == TyTy::TypeKind::ERROR)
     return;
 
@@ -410,9 +446,10 @@ TypeCheckExpr::resolve_segments (NodeId root_resolved_node_id,
 	  HIR::EnumItem *enum_item = enum_item_lookup.second;
 	  resolved_node_id = enum_item->get_mappings ().get_nodeid ();
 
+
 	  // insert the id of the variant we are resolved to
-	  context->insert_variant_definition (expr_mappings.get_hirid (),
-					      variant_id);
+         context->insert_variant_definition (expr_mappings.get_hirid (),
+                                             variant_id);
 	}
       else if (candidate.is_impl_candidate ())
 	{
