@@ -205,14 +205,15 @@ TypeCheckExpr::visit (HIR::PathInExpression &expr)
 
       //now find its type
       TyTy::BaseType *bl = TypeCheckItem::Resolve (hi);
-      infered = bl;
-      assert(bl != nullptr);
       //lmao, find a better way to do this...
       TyTy::VariantDef *vde =
 	TypeCheckEnumItem::Resolve(ei,INT64_MAX - 1);
 
       context->insert_variant_definition (expr.get_mappings ().get_hirid (),
 					  vde->get_id());
+      bl = SubstMapper::InferSubst (bl, expr.get_locus ());
+      infered = bl;
+      assert(bl != nullptr);
       return;
     }
   TyTy::BaseType *tyseg = resolve_root_path (expr, &offset, &resolved_node_id);
