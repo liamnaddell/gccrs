@@ -212,6 +212,8 @@ TypeCheckExpr::visit (HIR::PathInExpression &expr)
       context->insert_variant_definition (expr.get_mappings ().get_hirid (),
 					  vde->get_id());
       bl = SubstMapper::InferSubst (bl, expr.get_locus ());
+      resolver->insert_resolved_misc (expr.get_mappings ().get_nodeid (),
+				      expr.get_mappings ().get_nodeid ());
       infered = bl;
       assert(bl != nullptr);
       return;
