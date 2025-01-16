@@ -67,6 +67,7 @@ macros/mbe/macro54.rs
 macros/mbe/macro6.rs
 macros/mbe/macro_rules_macro_rules.rs
 macros/mbe/macro_use1.rs
+macros/builtin/option_env1.rs
 match-never-ltype.rs
 match-never-rtype.rs
 match1.rs

@@ -23,6 +23,7 @@
 #include "rust-hir-type-no-bounds.h"
 #include "rust-hir-pattern-abstract.h"
 #include "rust-hir-expr-abstract.h"
+#include "optional.h"
 
 namespace Rust {
 namespace HIR {
@@ -231,11 +232,14 @@ public:
 class PathPattern : public Pattern
 {
   std::vector<PathExprSegment> segments;
+  tl::optional<LangItem::Kind> lang_item;
 
 protected:
   PathPattern (std::vector<PathExprSegment> segments)
-    : segments (std::move (segments))
+    : segments (std::move (segments)), lang_item (tl::nullopt)
   {}
+
+  PathPattern (LangItem::Kind li) : segments ({}), lang_item (li) {}
 
   // Returns whether path has segments.
   bool has_segments () const { return !segments.empty (); }
@@ -246,23 +250,53 @@ protected:
   convert_to_simple_path (bool with_opening_scope_resolution) const;
 
 public:
+  bool is_lang_item () const { return lang_item != tl::nullopt; }
+  LangItem::Kind get_lang_item () const
+  {
+    rust_assert (lang_item != tl::nullopt);
+    return *lang_item;
+  }
   /* Returns whether the path is a single segment (excluding qualified path
    * initial as segment). */
-  bool is_single_segment () const { return segments.size () == 1; }
+  bool is_single_segment () const
+  {
+    rust_assert (!is_lang_item ());
+    return segments.size () == 1;
+  }
 
   std::string as_string () const override;
 
   void iterate_path_segments (std::function<bool (PathExprSegment &)> cb);
 
-  size_t get_num_segments () const { return segments.size (); }
+  size_t get_num_segments () const
+  {
+    rust_assert (!is_lang_item ());
+    return segments.size ();
+  }
 
-  std::vector<PathExprSegment> &get_segments () { return segments; }
+  std::vector<PathExprSegment> &get_segments ()
+  {
+    rust_assert (!is_lang_item ());
+    return segments;
+  }
 
-  const std::vector<PathExprSegment> &get_segments () const { return segments; }
+  const std::vector<PathExprSegment> &get_segments () const
+  {
+    rust_assert (!is_lang_item ());
+    return segments;
+  }
 
-  PathExprSegment &get_root_seg () { return segments.at (0); }
+  PathExprSegment &get_root_seg ()
+  {
+    rust_assert (!is_lang_item ());
+    return segments.at (0);
+  }
 
-  const PathExprSegment &get_final_segment () const { return segments.back (); }
+  const PathExprSegment &get_final_segment () const
+  {
+    rust_assert (!is_lang_item ());
+    return segments.back ();
+  }
 
   PatternType get_pattern_type () const override final
   {
@@ -280,9 +314,16 @@ class PathInExpression : public PathPattern, public PathExpr
 public:
   std::string as_string () const override;
 
-  // Constructor
+  // Path constructor
   PathInExpression (Analysis::NodeMapping mappings,
 		    std::vector<PathExprSegment> path_segments,
+		    location_t locus = UNDEF_LOCATION,
+		    bool has_opening_scope_resolution = false,
+		    std::vector<AST::Attribute> outer_attrs
+		    = std::vector<AST::Attribute> ());
+
+  // Lang-item constructor.
+  PathInExpression (Analysis::NodeMapping mappings, LangItem::Kind lang_item,
 		    location_t locus = UNDEF_LOCATION,
 		    bool has_opening_scope_resolution = false,
 		    std::vector<AST::Attribute> outer_attrs

@@ -64,7 +64,7 @@ template <typename T>
 void
 CollectLangItems::maybe_add_lang_item (const T &item)
 {
-  if (auto lang_item = get_lang_item_attr (item))
+  if (tl::optional<LangItem::Kind> lang_item = get_lang_item_attr (item))
     mappings.insert_lang_item_node (lang_item.value (), item.get_node_id ());
 }
 
@@ -94,6 +94,14 @@ CollectLangItems::visit (AST::Function &item)
 
 void
 CollectLangItems::visit (AST::StructStruct &item)
+{
+  maybe_add_lang_item (item);
+
+  DefaultASTVisitor::visit (item);
+}
+
+void
+CollectLangItems::visit (AST::EnumItem &item)
 {
   maybe_add_lang_item (item);
 

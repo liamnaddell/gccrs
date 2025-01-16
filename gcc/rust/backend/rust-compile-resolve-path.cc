@@ -42,8 +42,26 @@ ResolvePathRef::visit (HIR::QualifiedPathInExpression &expr)
 void
 ResolvePathRef::visit (HIR::PathInExpression &expr)
 {
-  resolved = resolve (expr.get_final_segment ().get_segment (),
-		      expr.get_mappings (), expr.get_locus (), false);
+  if (expr.is_lang_item ())
+    {
+      // FIXME: Currently this is written to handle lang-item paths which point
+      // to enum variants. If lang-item PathInExpression's refer to other types,
+      // this might need rewriting.
+      TyTy::BaseType *lookup = nullptr;
+      bool ok
+	= ctx->get_tyctx ()->lookup_type (expr.get_mappings ().get_hirid (),
+					  &lookup);
+      rust_assert (ok);
+
+      tree t = attempt_constructor_expression_lookup (lookup, ctx,
+						      expr.get_mappings (),
+						      expr.get_locus ());
+      TREE_USED (t) = 1;
+      resolved = t;
+    }
+  else
+    resolved = resolve (expr.get_final_segment ().get_segment (),
+			expr.get_mappings (), expr.get_locus (), false);
 }
 
 tree

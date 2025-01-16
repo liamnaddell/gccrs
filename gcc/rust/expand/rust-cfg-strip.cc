@@ -434,6 +434,9 @@ CfgStrip::visit (AST::PathInExpression &path)
       return;
     }
 
+  if (path.is_lang_item ())
+    return;
+
   for (auto &segment : path.get_segments ())
     {
       if (segment.has_generic_args ())

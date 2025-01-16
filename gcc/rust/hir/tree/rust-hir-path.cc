@@ -133,6 +133,7 @@ PathExprSegment::operator= (PathExprSegment const &other)
 void
 PathPattern::iterate_path_segments (std::function<bool (PathExprSegment &)> cb)
 {
+  rust_assert (!is_lang_item ());
   for (auto it = segments.begin (); it != segments.end (); it++)
     {
       if (!cb (*it))
@@ -140,12 +141,23 @@ PathPattern::iterate_path_segments (std::function<bool (PathExprSegment &)> cb)
     }
 }
 
+// Path constructor
 PathInExpression::PathInExpression (Analysis::NodeMapping mappings,
 				    std::vector<PathExprSegment> path_segments,
 				    location_t locus,
 				    bool has_opening_scope_resolution,
 				    std::vector<AST::Attribute> outer_attrs)
   : PathPattern (std::move (path_segments)),
+    PathExpr (std::move (mappings), std::move (outer_attrs)),
+    has_opening_scope_resolution (has_opening_scope_resolution), locus (locus)
+{}
+
+// Lang-item constructor.
+PathInExpression::PathInExpression (Analysis::NodeMapping mappings,
+				    LangItem::Kind lang_item, location_t locus,
+				    bool has_opening_scope_resolution,
+				    std::vector<AST::Attribute> outer_attrs)
+  : PathPattern (lang_item),
     PathExpr (std::move (mappings), std::move (outer_attrs)),
     has_opening_scope_resolution (has_opening_scope_resolution), locus (locus)
 {}

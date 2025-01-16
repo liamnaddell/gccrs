@@ -99,9 +99,10 @@ MarkLive::visit (HIR::PathInExpression &expr)
 {
   // We should iterate every path segment in order to mark the struct which
   // is used in expression like Foo::bar(), we should mark the Foo alive.
-  expr.iterate_path_segments ([&] (HIR::PathExprSegment &seg) -> bool {
-    return visit_path_segment (seg);
-  });
+  if (!expr.is_lang_item ())
+    expr.iterate_path_segments ([&] (HIR::PathExprSegment &seg) -> bool {
+      return visit_path_segment (seg);
+    });
 
   // after iterate the path segments, we should mark functions and associated
   // functions alive.

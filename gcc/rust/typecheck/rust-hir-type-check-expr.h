@@ -125,6 +125,8 @@ private:
   validate_arithmetic_type (const TyTy::BaseType *tyty,
 			    HIR::ArithmeticOrLogicalExpr::ExprType expr_type);
 
+  void handle_enum_lang_item (HIR::PathInExpression &expr);
+
   /* The return value of TypeCheckExpr::Resolve */
   TyTy::BaseType *infered;
 };

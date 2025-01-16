@@ -89,6 +89,12 @@ void
 DefaultASTVisitor::visit (AST::PathInExpression &path)
 {
   visit_outer_attrs (path);
+
+  // Do not recurse into the segments of a lang-item path, since these paths
+  // have no segments.
+  if (path.is_lang_item ())
+    return;
+
   for (auto &segment : path.get_segments ())
     visit (segment);
 }

@@ -622,7 +622,6 @@ public:
 
   std::string as_string () const override;
 
-  // TODO: this seems kinda dodgy
   std::vector<PathExprSegment> &get_segments ()
   {
     rust_assert (kind == Kind::Regular);
@@ -642,6 +641,8 @@ public:
 
   Pattern::Kind get_pattern_kind () override { return Pattern::Kind::Path; }
   Path::Kind get_path_kind () { return kind; }
+
+  bool is_lang_item () { return get_path_kind () == Kind::LangItem; }
 
 protected:
   std::vector<PathExprSegment> segments;

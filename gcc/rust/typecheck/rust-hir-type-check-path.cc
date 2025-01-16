@@ -19,6 +19,7 @@
 #include "rust-hir-type-check-expr.h"
 #include "rust-hir-type-check-type.h"
 #include "rust-hir-type-check-item.h"
+#include "rust-hir-type-check-enumitem.h"
 #include "rust-hir-trait-resolve.h"
 #include "rust-substitution-mapper.h"
 #include "rust-hir-path-probe.h"
@@ -175,12 +176,53 @@ TypeCheckExpr::visit (HIR::QualifiedPathInExpression &expr)
 		    expr.get_mappings (), expr.get_locus ());
 }
 
+/*
+ * Perform type resolution on a HIR::PathInExpression which is backed by a Lang
+ * Item, for example, Some, or None.
+ */
+void
+TypeCheckExpr::handle_enum_lang_item (HIR::PathInExpression &expr)
+{
+  // Find the lang item's definition
+  Analysis::Mappings &mappings = Analysis::Mappings::get ();
+  NodeId lang_item_node = mappings.get_lang_item_node (expr.get_lang_item ());
+  tl::optional<HirId> ohid = mappings.lookup_node_to_hir (lang_item_node);
+  rust_assert (ohid != tl::nullopt);
+  HirId hid1 = *ohid;
+  std::pair<HIR::Enum *, HIR::EnumItem *> ohi
+    = mappings.lookup_hir_enumitem (hid1);
+
+  HIR::Enum &enum_def = *(ohi.first);
+  HIR::EnumItem &variant_def = *(ohi.second);
+
+  TyTy::BaseType *bl = TypeCheckItem::Resolve (enum_def);
+  TyTy::VariantDef *vde
+    = TypeCheckEnumItem::Resolve (variant_def, INT64_MAX - 1);
+
+  context->insert_variant_definition (expr.get_mappings ().get_hirid (),
+				      vde->get_id ());
+  bl = SubstMapper::InferSubst (bl, expr.get_locus ());
+  resolver->insert_resolved_misc (expr.get_mappings ().get_nodeid (),
+				  expr.get_mappings ().get_nodeid ());
+
+  infered = bl;
+  rust_assert (bl != nullptr);
+  return;
+}
+
 void
 TypeCheckExpr::visit (HIR::PathInExpression &expr)
 {
   NodeId resolved_node_id = UNKNOWN_NODEID;
   size_t offset = -1;
+
+  // FIXME: This only handles enum items, but lang-item PathInExpressions might
+  // later refer to other types...
+  if (expr.is_lang_item ())
+    return this->handle_enum_lang_item (expr);
+
   TyTy::BaseType *tyseg = resolve_root_path (expr, &offset, &resolved_node_id);
+  rust_assert (tyseg != nullptr);
   if (tyseg->get_kind () == TyTy::TypeKind::ERROR)
     return;
 
