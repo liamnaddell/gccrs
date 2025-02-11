@@ -63,6 +63,11 @@ template <Namespace N>
 void
 ForeverStack<N>::push_inner (Rib rib, Link link)
 {
+  if (rib.kind == Rib::Kind::Prelude)
+    {
+      update_cursor (this->prelude);
+      return;
+    }
   // If the link does not exist, we create it and emplace a new `Node` with the
   // current node as its parent. `unordered_map::emplace` returns a pair with
   // the iterator and a boolean. If the value already exists, the iterator
@@ -290,6 +295,20 @@ ForeverStack<N>::get (const Identifier &name)
   return resolved_definition;
 }
 
+template <Namespace N>
+tl::optional<Rib::Definition>
+ForeverStack<N>::get_prelude (const Identifier &name)
+{
+  return prelude.rib.get (name.as_string ());
+}
+
+template <Namespace N>
+tl::optional<Rib::Definition>
+ForeverStack<N>::get_prelude (const std::string &name)
+{
+  return prelude.rib.get (name);
+}
+
 template <>
 tl::optional<Rib::Definition> inline ForeverStack<Namespace::Labels>::get (
   const Identifier &name)
@@ -512,6 +531,14 @@ ForeverStack<N>::resolve_path (
   if (segments.size () == 1)
     {
       auto res = get (unwrap_type_segment (segments.back ()).as_string ());
+      if (!res)
+	{
+	  // idk maybe try in the prelude then :/
+	  // NOTE: one day we may need to support multisegment resolution in the
+	  //  prelude.
+	  res
+	    = get_prelude (unwrap_type_segment (segments.back ()).as_string ());
+	}
       if (res && !res->is_ambiguous ())
 	insert_segment_resolution (segments.back (), res->get_node_id ());
       return res;

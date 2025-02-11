@@ -107,6 +107,11 @@ NameResolutionContext::scoped (Rib::Kind rib_kind, NodeId id,
 			       std::function<void (void)> lambda,
 			       tl::optional<Identifier> path)
 {
+  // Prelude doesn't have an access path
+  // TODO: Assert current cursor is at the root
+  if (rib_kind == Rib::Kind::Prelude)
+    rust_assert (!path);
+
   values.push (rib_kind, id, path);
   types.push (rib_kind, id, path);
   macros.push (rib_kind, id, path);
@@ -126,6 +131,9 @@ NameResolutionContext::scoped (Rib::Kind rib_kind, Namespace ns,
 			       std::function<void (void)> lambda,
 			       tl::optional<Identifier> path)
 {
+  // This could work... I'm not sure why you would want to do this though.
+  rust_assert (rib_kind != Rib::Kind::Prelude);
+
   switch (ns)
     {
     case Namespace::Values:
